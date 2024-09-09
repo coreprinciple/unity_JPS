@@ -42,7 +42,7 @@ namespace Test
 
         public void ResetGridState()
         {
-            _pathFinder.obstacles.Clear();
+            _pathFinder.ClearObstacle();
             _pathFinder.ClearPath();
 
             foreach (Transform grid in _grids)
@@ -110,12 +110,12 @@ namespace Test
 
             Coordinate coordinate = new Coordinate(x, y);
             
-            if (_pathFinder.obstacles.Contains(coordinate))
+            if (_pathFinder.IsObstacle(x, y))
             {
-                _pathFinder.obstacles.Remove(coordinate);
+                _pathFinder.RemoveObstacle(x, y);
                 SetGridColor(x, y, _normalMat);
             }
-            else if (_pathFinder.AddObstacle(coordinate))
+            else if (_pathFinder.AddObstacle(x, y))
                 SetGridColor(x, y, _obstacleMat);
         }
 
