@@ -69,7 +69,7 @@
     <Compile Include="Assets\Scripts\PathFinderBase.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Assets\DownlaodedAssets\ModularAnimalKnightsPolyart\Material\NewURPUnlitShader.shader" />
+    <None Include="Assets\Shaders\NewURPUnlitShader.shader" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
