@@ -1,4 +1,4 @@
-# Jump Point Search
+# Jump Point Search (Mono and DOTS, both ways)
 Implementation of a Simple Jump Point Search with Unity</br>
 
 
