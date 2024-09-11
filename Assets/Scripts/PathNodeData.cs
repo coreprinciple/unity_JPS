@@ -28,6 +28,31 @@ namespace Algorithm
             { SearchDir.RightLower, new CoordinatePair(new Coordinate(1, 0), new Coordinate(0, -1)) },
         };
 
+        public static readonly CoordinatePair[] SearchStepArray = new CoordinatePair[] {
+            new CoordinatePair(new Coordinate(-1, 0), new Coordinate(0, 1)),
+            new CoordinatePair(new Coordinate(1, 0), new Coordinate(0, 1)),
+            new CoordinatePair(new Coordinate(-1, 0), new Coordinate(0, -1)),
+            new CoordinatePair(new Coordinate(1, 0), new Coordinate(0, -1))
+        };
+
+        public static int ToDialgonalCoordIndex(this SearchDir diagonalDir)
+        {
+            if (diagonalDir == SearchDir.LeftUpper)
+                return 0;
+            if (diagonalDir == SearchDir.RightUpper)
+                return 1;
+            if (diagonalDir == SearchDir.LeftLower)
+                return 2;
+            if (diagonalDir == SearchDir.RightLower)
+                return 3;
+            return -1;
+        }
+
+        public static CoordinatePair GetDiagonalCoordPair(SearchDir diagonalDir)
+        {
+            return SearchStepArray[diagonalDir.ToDialgonalCoordIndex()];
+        }
+
         public enum SearchDir : int
         {
             None = 0,
@@ -40,19 +65,6 @@ namespace Algorithm
             RightLower = Right | Lower,
             LeftLower = Left | Lower,
             All = LeftUpper | RightLower
-        }
-
-        public static SearchDir OppositeDir(this SearchDir dir)
-        {
-            if (dir == SearchDir.Left) return SearchDir.Right;
-            if (dir == SearchDir.Right) return SearchDir.Left;
-            if (dir == SearchDir.Upper) return SearchDir.Lower;
-            if (dir == SearchDir.Lower) return SearchDir.Upper;
-            if (dir == SearchDir.LeftUpper) return SearchDir.RightLower;
-            if (dir == SearchDir.RightLower) return SearchDir.LeftUpper;
-            if (dir == SearchDir.RightUpper) return SearchDir.LeftLower;
-            if (dir == SearchDir.LeftLower) return SearchDir.RightUpper;
-            return SearchDir.None;
         }
 
         public static int CalcG(int fromX, int fromY, int toX, int toY)
@@ -91,11 +103,28 @@ namespace Algorithm
 
     }
 
+    public struct PathNode
+    {
+        public int index;
+        public int beforeIndex;
+        public int x, y;
+        public int g, h, f;
+        public bool isObstacle;
+
+        public void UpdateF()
+        {
+            f = g + h;
+        }
+    }
+
     public struct Node
     {
+        public int index;
+        public int beforeIndex;
         public int x, y;
         public int parentX, parentY;
         public int g, h, f;
+        public bool isObstacle;
 
         public override bool Equals(object obj)
         {
@@ -110,6 +139,11 @@ namespace Algorithm
         public override int GetHashCode()
         {
             return System.HashCode.Combine(x, y, parentX, parentY, g, h, f);
+        }
+
+        public void UpdateF()
+        {
+            f = g + h;
         }
     }
 

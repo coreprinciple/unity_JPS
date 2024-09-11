@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using UnityEditor.Experimental.GraphView;
-using UnityEngine.UIElements;
 using static Algorithm.PathAlgorithmHelper;
-using static UnityEngine.InputManagerEntry;
 
 namespace Algorithm
 {
@@ -60,6 +57,67 @@ namespace Algorithm
             return node;
         }
 
+        private void ConnectNodesBetween(Node node1, Node node2)
+        {
+            if (node1.x == node2.x)
+                ConnectHorizontal(node1, node2);
+            else if (node1.y == node2.y)
+                ConnectVertical(node1, node2);
+            else
+                ConnectNodesDiagonal(node1, node2);
+        }
+
+        private void ConnectNodesDiagonal(Node node1, Node node2)
+        {
+            int size = Math.Abs(node1.x - node2.x) - 1;
+            int addH = node1.x < node2.x ? -1 : 1;
+            int addV = node1.y < node2.y ? -1 : 1;
+            int x = node2.x;
+            int y = node2.y;
+            int count = 0;
+
+            while (count < size)
+            {
+                count++;
+                Node newNode = MakeNode(x + addH, y + addV, x, y, _endX, _endY);
+                _pathes.Add(newNode);
+                x += addH;
+                y += addV;
+            }
+        }
+
+        private void ConnectVertical(Node node1, Node node2)
+        {
+            int pivot = node2.x;
+            int size = Math.Abs(node1.x - node2.x) - 1;
+            int add = node1.x < node2.x ? -1 : 1;
+            int count = 0;
+
+            while (count < size)
+            {
+                Node newNode = MakeNode(pivot + add, node1.y, pivot, node1.y, _endX, _endY);
+                _pathes.Add(newNode);
+                pivot = newNode.x;
+                count++;
+            }
+        }
+
+        private void ConnectHorizontal(Node node1, Node node2)
+        {
+            int pivot = node2.y;
+            int size = Math.Abs(node1.y - node2.y) - 1;
+            int add = node1.y < node2.y ? -1 : 1;
+            int count = 0;
+
+            while (count < size)
+            {
+                Node newNode = MakeNode(node1.x, pivot + add, node1.x, pivot, _endX, _endY);
+                _pathes.Add(newNode);
+                pivot = newNode.y;
+                count++;
+            }
+        }
+
         protected override bool SearchPath(int fromX, int fromY, int toX, int toY)
         {
             _openNodes.Clear();
@@ -95,67 +153,6 @@ namespace Algorithm
                 UnityEngine.Debug.Log(path.x + ", " + path.y + " :: " + path.parentX + ", " + path.parentY);
 
             return true;
-        }
-
-        private void ConnectNodesBetween(Node node1, Node node2)
-        {
-            if (node1.x == node2.x)
-                ConnectHorizontal(node1, node2);
-            else if (node1.y == node2.y)
-                ConnectVertical(node1, node2);
-            else
-                ConnectNodesDiagonal(node1, node2);
-        }
-
-        private void ConnectNodesDiagonal(Node node1, Node node2)
-        {
-            int size = Math.Abs(node1.x - node2.x) - 1;
-            int addH = node1.x < node2.x ? 1 : -1;
-            int addV = node1.y < node2.y ? 1 : -1;
-            int count = 0;
-            int x = node1.x;
-            int y = node1.y;
-
-            while (count < size)
-            {
-                count++;
-                Node newNode = MakeNode(x + addH, y + addV, x, y, _endX, _endY);
-                _pathes.Add(newNode);
-                x += addH;
-                y += addV;
-            }
-        }
-
-        private void ConnectVertical(Node node1, Node node2)
-        {
-            int min = Math.Min(node1.x, node2.x);
-            int size = Math.Abs(node1.x - node2.x) - 1;
-            int count = 0;
-            int parent = min;
-
-            while (count < size)
-            {
-                count++;
-                Node newNode = MakeNode(min + count, node1.y, parent, node1.y, _endX, _endY);
-                _pathes.Add(newNode);
-                parent = newNode.x;
-            }
-        }
-
-        private void ConnectHorizontal(Node node1, Node node2)
-        {
-            int min = Math.Min(node1.y, node2.y);
-            int size = Math.Abs(node1.y - node2.y) - 1;
-            int count = 0;
-            int parent = min;
-
-            while (count < size)
-            {
-                count++;
-                Node newNode = MakeNode(node1.x, min + count, node1.x, parent, _endX, _endY);
-                _pathes.Add(newNode);
-                parent = newNode.y;
-            }
         }
 
         private bool FindPathInner(Node startNode, int toX, int toY)

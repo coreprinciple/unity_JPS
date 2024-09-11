@@ -1,5 +1,7 @@
+
 Shader "URP/Unlit/NewURPUnlitShader"
 {
+
     Properties
     { 
         [MainTexture] _BaseMap("Texture", 2D) = "white" {}
@@ -8,6 +10,7 @@ Shader "URP/Unlit/NewURPUnlitShader"
 
     SubShader
     {
+
         Tags { "RenderType" = "Opaque" "Queue"="Geometry" "RenderPipeline" = "UniversalPipeline" }
         LOD 100
 
@@ -19,6 +22,7 @@ Shader "URP/Unlit/NewURPUnlitShader"
             HLSLPROGRAM
             #pragma target 4.5
             #pragma exclude_renderers gles d3d9
+            #pragma multi_compile _ DOTS_INSTANCING_ON
             
             #pragma vertex vert
             #pragma fragment frag
