@@ -57,23 +57,23 @@ namespace Algorithm
             return node;
         }
 
-        private void ConnectNodesBetween(Node node1, Node node2)
+        private void ConnectNodesBetween(Node current, Node before)
         {
-            if (node1.x == node2.x)
-                ConnectHorizontal(node1, node2);
-            else if (node1.y == node2.y)
-                ConnectVertical(node1, node2);
+            if (current.x == before.x)
+                ConnectHorizontal(current, before);
+            else if (current.y == before.y)
+                ConnectVertical(current, before);
             else
-                ConnectNodesDiagonal(node1, node2);
+                ConnectNodesDiagonal(current, before);
         }
 
-        private void ConnectNodesDiagonal(Node node1, Node node2)
+        private void ConnectNodesDiagonal(Node current, Node before)
         {
-            int size = Math.Abs(node1.x - node2.x) - 1;
-            int addH = node1.x < node2.x ? -1 : 1;
-            int addV = node1.y < node2.y ? -1 : 1;
-            int x = node2.x;
-            int y = node2.y;
+            int size = Math.Abs(current.x - before.x) - 1;
+            int addH = current.x < before.x ? 1 : -1;
+            int addV = current.y < before.y ? 1 : -1;
+            int x = current.x;
+            int y = current.y;
             int count = 0;
 
             while (count < size)
@@ -86,32 +86,32 @@ namespace Algorithm
             }
         }
 
-        private void ConnectVertical(Node node1, Node node2)
+        private void ConnectVertical(Node current, Node before)
         {
-            int pivot = node2.x;
-            int size = Math.Abs(node1.x - node2.x) - 1;
-            int add = node1.x < node2.x ? -1 : 1;
+            int pivot = current.x;
+            int size = Math.Abs(current.x - before.x) - 1;
+            int add = current.x < before.x ? 1 : -1;
             int count = 0;
 
             while (count < size)
             {
-                Node newNode = MakeNode(pivot + add, node1.y, pivot, node1.y, _endX, _endY);
+                Node newNode = MakeNode(pivot + add, current.y, pivot, current.y, _endX, _endY);
                 _pathes.Add(newNode);
                 pivot = newNode.x;
                 count++;
             }
         }
 
-        private void ConnectHorizontal(Node node1, Node node2)
+        private void ConnectHorizontal(Node current, Node before)
         {
-            int pivot = node2.y;
-            int size = Math.Abs(node1.y - node2.y) - 1;
-            int add = node1.y < node2.y ? -1 : 1;
+            int pivot = current.y;
+            int size = Math.Abs(current.y - before.y) - 1;
+            int add = current.y < before.y ? 1 : -1;
             int count = 0;
 
             while (count < size)
             {
-                Node newNode = MakeNode(node1.x, pivot + add, node1.x, pivot, _endX, _endY);
+                Node newNode = MakeNode(current.x, pivot + add, current.x, pivot, _endX, _endY);
                 _pathes.Add(newNode);
                 pivot = newNode.y;
                 count++;
@@ -129,7 +129,7 @@ namespace Algorithm
             Node firstNode = MakeNode(fromX, fromY, fromX, fromY, toX, toY);
             AddToOpenNode(firstNode);
 
-            bool found = FindPathInner(firstNode, toX, toY);
+            bool found = SearchPathInner(firstNode, toX, toY);
 
             if (found == false)
                 return false;
@@ -155,7 +155,7 @@ namespace Algorithm
             return true;
         }
 
-        private bool FindPathInner(Node startNode, int toX, int toY)
+        private bool SearchPathInner(Node startNode, int toX, int toY)
         {
             while (_openNodes.Count > 0)
             {

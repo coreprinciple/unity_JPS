@@ -1,10 +1,12 @@
 using Algorithm;
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Collections;
-using Unity.Mathematics;
-using static Algorithm.PathAlgorithmHelper;
 using Unity.Rendering;
+using Unity.Mathematics;
+using Unity.Collections;
+using static Algorithm.PathAlgorithmHelper;
+using UnityEditor.Experimental.GraphView;
+using System;
 
 [CreateAfter(typeof(GridSpawnSystem))]
 partial struct JPSSystem : ISystem, ISystemStartStop
@@ -29,24 +31,35 @@ partial struct JPSSystem : ISystem, ISystemStartStop
         state.RequireForUpdate<JPSTagComponent>();
     }
 
-    #region connect nodes between
-    private void ConnectNodesBetween(PathNode node1, PathNode node2, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
+    private void AddPath(int index, ref NativeList<int> pathes)
     {
-        if (node1.x == node2.x)
-            ConnectHorizontal(node1, node2, ref pathNodes, ref pathes);
-        else if (node1.y == node2.y)
-            ConnectVertical(node1, node2, ref pathNodes, ref pathes);
-        else
-            ConnectNodesDiagonal(node1, node2, ref pathNodes, ref pathes);
+        if (pathes.Contains(index))
+            return;
+
+        int y = index / xSize;
+        int x = index - y * xSize;
+        
+        pathes.Add(index);
     }
 
-    private void ConnectNodesDiagonal(PathNode node1, PathNode node2, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
+    #region connect nodes between
+    private void ConnectNodesBetween(PathNode current, PathNode before, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
     {
-        int size = System.Math.Abs(node1.x - node2.x) - 1;
-        int addH = node1.x < node2.x ? -1 : 1;
-        int addV = node1.y < node2.y ? -1 : 1;
-        int x = node2.x;
-        int y = node2.y;
+        if (current.x == before.x)
+            ConnectHorizontal(current, before, ref pathNodes, ref pathes);
+        else if (current.y == before.y)
+            ConnectVertical(current, before, ref pathNodes, ref pathes);
+        else
+            ConnectNodesDiagonal(current, before, ref pathNodes, ref pathes);
+    }
+
+    private void ConnectNodesDiagonal(PathNode current, PathNode before, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
+    {
+        int size = System.Math.Abs(current.x - before.x) - 1;
+        int addH = current.x < before.x ? 1 : -1;
+        int addV = current.y < before.y ? 1 : -1;
+        int x = current.x;
+        int y = current.y;
         int count = 0;
 
         while (count < size)
@@ -54,57 +67,55 @@ partial struct JPSSystem : ISystem, ISystemStartStop
             count++;
 
             PathNode newNode = pathNodes[GetIndex(x + addH, y + addV, xSize)];
+            newNode.beforeIndex = current.index;
             newNode.g = CalcG(x, y, newNode.x, newNode.y);
-            newNode.beforeIndex = node1.index;
             newNode.UpdateF();
             pathNodes[newNode.index] = newNode;
-            pathes.Add(newNode.index);
+            AddPath(newNode.index, ref pathes);
 
             x += addH;
             y += addV;
         }
     }
 
-    private void ConnectVertical(PathNode node1, PathNode node2, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
+    private void ConnectVertical(PathNode current, PathNode before, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
     {
-        int pivot = node2.x;
-        int size = System.Math.Abs(node1.x - node2.x) - 1;
-        int add = node1.x < node2.x ? -1 : 1;
+        int pivot = current.x;
+        int size = System.Math.Abs(current.x - before.x) - 1;
+        int add = current.x < before.x ? 1 : -1;
         int count = 0;
 
         while (count < size)
         {
-            int beforeIndex = GetIndex(pivot, node1.y, xSize);
+            int beforeIndex = GetIndex(pivot, current.y, xSize);
 
-            PathNode newNode = pathNodes[GetIndex(pivot + add, node1.y, xSize)];
-            newNode.g = CalcG(pivot, node1.y, newNode.x, newNode.y);
-            newNode.beforeIndex = beforeIndex;
+            PathNode newNode = pathNodes[GetIndex(pivot + add, current.y, xSize)];
+            newNode.beforeIndex = current.index;
+            newNode.g = CalcG(pivot, current.y, newNode.x, newNode.y);
             newNode.UpdateF();
             pathNodes[newNode.index] = newNode;
-            pathes.Add(newNode.index);
+            AddPath(newNode.index, ref pathes);
 
             pivot = newNode.x;
             count++;
         }
     }
 
-    private void ConnectHorizontal(PathNode node1, PathNode node2, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
+    private void ConnectHorizontal(PathNode current, PathNode before, ref NativeArray<PathNode> pathNodes, ref NativeList<int> pathes)
     {
-        int pivot = node2.y;
-        int size = System.Math.Abs(node1.y - node2.y) - 1;
-        int add = node1.y < node2.y ? -1 : 1;
+        int pivot = current.y;
+        int size = System.Math.Abs(current.y - before.y) - 1;
+        int add = current.y < before.y ? 1 : -1;
         int count = 0;
 
         while (count < size)
         {
-            int beforeIndex = GetIndex(node1.x, pivot, xSize);
-
-            PathNode newNode = pathNodes[GetIndex(node1.x, pivot + add, xSize)];
-            newNode.g = CalcG(node1.x, pivot, newNode.x, newNode.y);
-            newNode.beforeIndex = beforeIndex;
+            PathNode newNode = pathNodes[GetIndex(current.x, pivot + add, xSize)];
+            newNode.beforeIndex = current.index;
+            newNode.g = CalcG(current.x, pivot, newNode.x, newNode.y);
             newNode.UpdateF();
             pathNodes[newNode.index] = newNode;
-            pathes.Add(newNode.index);
+            AddPath(newNode.index, ref pathes);
 
             pivot = newNode.y;
             count++;
@@ -112,26 +123,30 @@ partial struct JPSSystem : ISystem, ISystemStartStop
     }
     #endregion
 
-    private void FindPath(ref SystemState state, int2 startPosition, int2 endPosition)
+    private void SearchPath(ref SystemState state, int2 start, int2 end)
     {
-        if (startPosition.x == endPosition.x && startPosition.y == endPosition.y)
+        if (start.x == end.x && start.y == end.y)
             return;
 
         int2 gridSize = new int2(xSize, ySize);
         NativeArray<PathNode> pathNodes = new NativeArray<PathNode>(xSize * ySize, Allocator.Temp);
+        NativeArray<bool> obstacles = new NativeArray<bool>(xSize * ySize, Allocator.Temp);
+
+        foreach (var obstacle in JPSDotsDataLinker.Instance().obstacles)
+            obstacles[GetIndex(obstacle.x, obstacle.y, xSize)] = true;
 
         for (int x = 0; x < xSize; x++)
         {
             for (int y = 0; y < ySize; y++)
             {
                 PathNode node = new PathNode();
+                node.beforeIndex = -1;
                 node.index = GetIndex(x, y, xSize);
                 node.x = x;
                 node.y = y;
-                node.g = int.MaxValue;
-                node.h = CalcH(x, y, endPosition.x, endPosition.y);
-                node.isObstacle = false;
-                node.beforeIndex = -1;
+                node.g = 100000;
+                node.h = CalcH(x, y, end.x, end.y);
+                node.isObstacle = obstacles[node.index];
                 node.UpdateF();
 
                 pathNodes[node.index] = node;
@@ -139,19 +154,25 @@ partial struct JPSSystem : ISystem, ISystemStartStop
         }
 
         foreach (var (grid, color, entity) in SystemAPI.Query<GridComponent, RefRW<URPMaterialPropertyBaseColor>>().WithEntityAccess())
-            color.ValueRW.Value = new float4(1, 1, 1, 1);
+        {
+            if (pathNodes[grid.index].isObstacle)
+                color.ValueRW.Value = new float4(1, 0, 0, 1);
+            else if (grid.index == GetIndex(start.x, start.y, xSize))
+                color.ValueRW.Value = new float4(0, 1, 0, 1);
+            else if (grid.index == GetIndex(end.x, end.y, xSize))
+                color.ValueRW.Value = new float4(0, 0.5f, 0.5f, 1);
+            else
+                color.ValueRW.Value = new float4(1, 1, 1, 1);
+        }
 
         NativeList<int> openNodes = new NativeList<int>(Allocator.Temp);
         NativeList<int> closedNodes = new NativeList<int>(Allocator.Temp);
         NativeList<int> tempPathes = new NativeList<int>(Allocator.Temp);
         NativeList<int> pathes = new NativeList<int>(Allocator.Temp);
 
-        PathNode startNode = pathNodes[GetIndex(startPosition.x, startPosition.y, xSize)];
-        startNode.g = 0;
-        startNode.UpdateF();
-        pathNodes[startNode.index] = startNode;
-
+        PathNode startNode = pathNodes[GetIndex(start.x, start.y, xSize)];
         openNodes.Add(startNode.index);
+
         bool found = false;
 
         while (openNodes.Length > 0)
@@ -167,7 +188,7 @@ partial struct JPSSystem : ISystem, ISystemStartStop
                     pivotIndex = openNodes[o];
                 }
 
-                found = Search(pivotIndex, endPosition.x, endPosition.y, ref pathNodes, ref openNodes, ref closedNodes, ref tempPathes);
+                found = Search(pivotIndex, start, end, ref pathNodes, ref openNodes, ref closedNodes, ref tempPathes);
 
                 if (found)
                     break;
@@ -179,45 +200,55 @@ partial struct JPSSystem : ISystem, ISystemStartStop
 
         if (found)
         {
-            PathNode pathNode = pathNodes[GetIndex(endPosition.x, endPosition.y, xSize)];
+            PathNode debugRouteNode = pathNodes[GetIndex(end.x, end.y, xSize)];
+
+            while (debugRouteNode.beforeIndex >= 0)
+            {
+                UnityEngine.Debug.Log(debugRouteNode.x + ", " + debugRouteNode.y);
+
+                if (debugRouteNode.beforeIndex < 0)
+                    break;
+
+                debugRouteNode = pathNodes[debugRouteNode.beforeIndex];
+            }
+
+            PathNode pathNode = pathNodes[GetIndex(end.x, end.y, xSize)];
 
             while (pathNode.x >= 0 && pathNode.y >= 0)
             {
                 pathes.Add(pathNode.index);
 
-                if (pathNode.x == startPosition.x && pathNode.y == startPosition.y)
+                if (pathNode.x == start.x && pathNode.y == start.y)
                     break;
 
                 if (pathNode.beforeIndex < 0)
                     break;
 
-                PathNode connectNode = pathNodes[pathNode.beforeIndex];
+                pathNode = pathNodes[pathNode.beforeIndex];
 
                 if (pathNode.x >= 0 && pathNode.y >= 0)
-                    ConnectNodesBetween(connectNode, pathNode, ref pathNodes, ref pathes);
-
-                pathNode = connectNode;
+                    ConnectNodesBetween(pathNodes[pathes[pathes.Length - 1]], pathNode, ref pathNodes, ref pathes);
             }
 
             foreach (var (grid, color, entity) in SystemAPI.Query<GridComponent, RefRW<URPMaterialPropertyBaseColor>>().WithEntityAccess())
             {
-                foreach (var path in pathes)
+                if (grid.index == GetIndex(end.x, end.y, xSize))
+                    color.ValueRW.Value = new float4(0, 0.5f, 0.5f, 1);
+                else
                 {
-                    if (grid.index == path)
+                    foreach (var path in pathes)
                     {
-                        color.ValueRW.Value = new float4(1, 0, 0, 1);
-                        break;
+                        if (grid.index == path)
+                        {
+                            color.ValueRW.Value = new float4(0, 0, 1, 1);
+                            break;
+                        }
                     }
                 }
             }
-
-            foreach (var path in pathes)
-            {
-                PathNode node = pathNodes[path];
-                UnityEngine.Debug.Log(node.x + ", " + node.y);
-            }
         }
 
+        obstacles.Dispose();
         pathes.Dispose();
         tempPathes.Dispose();
         openNodes.Dispose();
@@ -225,10 +256,10 @@ partial struct JPSSystem : ISystem, ISystemStartStop
         pathNodes.Dispose();
     }
 
-    private bool Search(int index, int toX, int toY, ref NativeArray<PathNode> pathNodes, ref NativeList<int> openNodes, ref NativeList<int> closedNodes, ref NativeList<int> pathes)
+    private bool Search(int index, int2 start, int2 end, ref NativeArray<PathNode> pathNodes, ref NativeList<int> openNodes, ref NativeList<int> closedNodes, ref NativeList<int> pathes)
     {
         closedNodes.Add(index);
-        pathes.Add(index);
+        AddPath(index, ref pathes);
 
         for (int d = 0; d < DiagonalArounds.Length; d++)
         {
@@ -239,6 +270,9 @@ partial struct JPSSystem : ISystem, ISystemStartStop
 
             while (true)
             {
+                if (nextX == end.x && nextY == end.y)
+                    return true;
+
                 if (IsOutOfRange(nextX, nextY, xSize, ySize))
                     break;
 
@@ -247,24 +281,25 @@ partial struct JPSSystem : ISystem, ISystemStartStop
                 if (neighborNode.isObstacle)
                     break;
 
-                if (nextX == toX && nextY == toY)
-                {
-                    pathes.Add(neighborNode.index);
-                    return true;
-                }
-
                 SearchDir diagonalDir = DiagonalArounds[d].dir;
                 CoordinatePair stepPair = GetDiagonalCoordPair(diagonalDir);
 
-                neighborNode.g = CalcG(beforeX, beforeY, nextY, nextY);
                 neighborNode.beforeIndex = index;
+                neighborNode.g = CalcG(beforeX, beforeY, nextX, nextY);
                 neighborNode.UpdateF();
-                pathNodes[neighborNode.index] = neighborNode;
 
-                bool found = SearchByStep(neighborNode.index, toX, toY, nextX, nextY, stepPair.horizontal, diagonalDir, true, ref pathNodes, ref openNodes, ref closedNodes, ref pathes);
+                //neighborNode.beforeIndex = index;
+                //neighborNode.g = CalcG(beforeX, beforeY, nextX, nextY);
+                //neighborNode.UpdateF();
+                //pathNodes[neighborNode.index] = neighborNode;
+
+                bool found = SearchByStep(neighborNode, start, end, stepPair.horizontal, diagonalDir, true, ref pathNodes, ref openNodes, ref closedNodes, ref pathes);
 
                 if (found == false)
-                    found = SearchByStep(neighborNode.index, toX, toY, nextX, nextY, stepPair.vertical, diagonalDir, false, ref pathNodes, ref openNodes, ref closedNodes, ref pathes);
+                    found = SearchByStep(neighborNode, start, end, stepPair.vertical, diagonalDir, false, ref pathNodes, ref openNodes, ref closedNodes, ref pathes);
+
+                if (found)
+                    pathNodes[neighborNode.index] = neighborNode;
 
                 beforeX = nextX;
                 beforeY = nextY;
@@ -279,10 +314,10 @@ partial struct JPSSystem : ISystem, ISystemStartStop
         return false;
     }
 
-    private bool SearchByStep(int parentIndex, int toX, int toY, int x, int y, Coordinate stepCoordinate, SearchDir diagonalDir, bool isHorizon, ref NativeArray<PathNode> pathNodes, ref NativeList<int> openNodes, ref NativeList<int> closedNodes, ref NativeList<int> pathes)
+    private bool SearchByStep(PathNode parentNode, int2 start, int2 end, Coordinate stepCoordinate, SearchDir diagonalDir, bool isHorizon, ref NativeArray<PathNode> pathNodes, ref NativeList<int> openNodes, ref NativeList<int> closedNodes, ref NativeList<int> pathes)
     {
-        int nextX = x;
-        int nextY = y;
+        int nextX = parentNode.x;
+        int nextY = parentNode.y;
         int beforeX;
         int beforeY;
 
@@ -298,28 +333,28 @@ partial struct JPSSystem : ISystem, ISystemStartStop
 
             PathNode dest = pathNodes[GetIndex(nextX, nextY, xSize)];
 
-            if (nextX == toX && nextY == toY)
-            {
-                pathes.Add(parentIndex);
+            if (dest.isObstacle)
+                return false;
 
-                dest.beforeIndex = parentIndex;
-                dest.g = CalcG(x, y, nextY, nextY);
+            if (nextX == end.x && nextY == end.y)
+            {
+                AddPath(parentNode.index, ref pathes);
+
+                dest.beforeIndex = parentNode.index;
+                dest.g = CalcG(parentNode.x, parentNode.y, nextY, nextY);
                 dest.UpdateF();
                 pathNodes[dest.index] = dest;
 
-                pathes.Add(dest.index);
+                AddPath(dest.index, ref pathes);
 
                 return true;
             }
 
-            if (dest.isObstacle)
-                return false;
-
             if (CheckForceNeighbor(nextX, nextY, out int neighborX, out int neighborY, diagonalDir, isHorizon, pathNodes))
             {
                 PathNode currentNode = pathNodes[GetIndex(nextX, nextY, xSize)];
-                currentNode.beforeIndex = parentIndex;
-                currentNode.g = CalcG(x, y, nextX, nextY);
+                currentNode.beforeIndex = parentNode.index;
+                currentNode.g = CalcG(parentNode.x, parentNode.y, nextX, nextY);
                 currentNode.UpdateF();
                 pathNodes[currentNode.index] = currentNode;
 
@@ -332,9 +367,11 @@ partial struct JPSSystem : ISystem, ISystemStartStop
                 if (!closedNodes.Contains(neighbor.index) && !openNodes.Contains(neighbor.index))
                     openNodes.Add(neighbor.index);
 
-                pathes.Add(parentIndex);
-                pathes.Add(currentNode.index);
-                pathes.Add(neighbor.index);
+                pathNodes[parentNode.index] = parentNode;
+
+                AddPath(parentNode.index, ref pathes);
+                AddPath(currentNode.index, ref pathes);
+                AddPath(neighbor.index, ref pathes);
             }
         }
     }
@@ -384,7 +421,7 @@ partial struct JPSSystem : ISystem, ISystemStartStop
         endX = JPSDotsDataLinker.Instance().endX;
         endY = JPSDotsDataLinker.Instance().endY;
 
-        FindPath(ref state, new int2(startX, startY), new int2(endX, endY));
+        SearchPath(ref state, new int2(startX, startY), new int2(endX, endY));
         state.Enabled = false;
 
         //JPSJob job = new JPSJob();

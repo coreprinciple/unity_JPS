@@ -1,3 +1,6 @@
+using Unity.Mathematics;
+using System.Collections.Generic;
+
 public class JPSDotsDataLinker
 {
     public int xSize = 30;
@@ -8,6 +11,8 @@ public class JPSDotsDataLinker
 
     public float gridWidth;
     public float gridHeight;
+
+    public readonly List<int2> obstacles = new List<int2>(100);
 
     public static JPSDotsDataLinker Instance()
     {
