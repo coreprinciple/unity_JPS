@@ -289,8 +289,7 @@ public struct JPSJob : IJob
         NativeList<int> openNodes = new NativeList<int>(Allocator.Temp);
         NativeList<int> closedNodes = new NativeList<int>(Allocator.Temp);
         NativeList<int> tempPathes = new NativeList<int>(Allocator.Temp);
-        pathes.Clear();
-
+        
         PathNode startNode = pathNodes[GetIndex(start.x, start.y, xSize)];
         openNodes.Add(startNode.index);
 

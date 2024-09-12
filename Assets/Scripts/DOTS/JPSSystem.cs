@@ -4,21 +4,15 @@ using Unity.Entities;
 using Unity.Rendering;
 using Unity.Mathematics;
 using Unity.Collections;
+using UnityEngine;
 
 [CreateAfter(typeof(GridSpawnSystem))]
-partial struct JPSSystem : ISystem, ISystemStartStop
+partial struct JPSSystem : ISystem
 {
     private NativeList<int> pathes;
+    private bool _search;
 
     private int GetIndex(int x, int y, int xSize) => y * xSize + x;
-
-    public void OnStartRunning(ref SystemState state)
-    {
-    }
-
-    public void OnStopRunning(ref SystemState state)
-    {
-    }
 
     [BurstCompile]
     public void OnCreate(ref SystemState state)
@@ -31,6 +25,17 @@ partial struct JPSSystem : ISystem, ISystemStartStop
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (JPSManaged.Instance().searchOrder)
+        {
+            JPSManaged.Instance().searchOrder = false;
+            _search = true;
+        }
+
+        if (_search == false)
+            return;
+
+        _search = false;
+
         int xSize = JPSDotsDataLinker.Instance().xSize;
         int ySize = JPSDotsDataLinker.Instance().ySize;
         int startX = JPSDotsDataLinker.Instance().startX;
@@ -54,6 +59,8 @@ partial struct JPSSystem : ISystem, ISystemStartStop
             else
                 color.ValueRW.Value = new float4(1, 1, 1, 1);
         }
+
+        pathes.Clear();
 
         JPSJob job = new JPSJob();
         job.pathes = pathes;
@@ -81,9 +88,7 @@ partial struct JPSSystem : ISystem, ISystemStartStop
                 }
             }
         }
-
         obstacles.Dispose();
-        state.Enabled = false;
     }
 
     [BurstCompile]

@@ -121,9 +121,6 @@ namespace Test
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Space))
-                SearchPath();
-
             if (Input.GetMouseButtonDown(0))
                 PickObstacleGrid();
         }

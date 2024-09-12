@@ -149,8 +149,8 @@ namespace Algorithm
                     ConnectNodesBetween(_pathes[_pathes.Count - 1], pathNode);
             }
 
-            foreach (var path in _pathes)
-                UnityEngine.Debug.Log(path.x + ", " + path.y + " :: " + path.parentX + ", " + path.parentY);
+            //foreach (var path in _pathes)
+            //    UnityEngine.Debug.Log(path.x + ", " + path.y + " :: " + path.parentX + ", " + path.parentY);
 
             return true;
         }

@@ -5,8 +5,21 @@ using Unity.Mathematics;
 
 public class JPSManaged : MonoBehaviour
 {
+    private static JPSManaged _instance;
+
+    [HideInInspector] public bool searchOrder;
+
+    public static JPSManaged Instance()
+    {
+        if (_instance == null)
+            _instance = FindAnyObjectByType<JPSManaged>();
+        return _instance;
+    }
+
     void Awake()
     {
+        _instance = this;
+
         JPSDotsDataLinker.Instance().gridWidth = 1.0f;
         JPSDotsDataLinker.Instance().gridHeight = 1.0f;
         JPSDotsDataLinker.Instance().startX = 3;
@@ -32,14 +45,8 @@ public class JPSManaged : MonoBehaviour
         ecb.Dispose();
     }
 
-    void Start()
+    public void OnClickSearch()
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        searchOrder = true;
     }
 }
